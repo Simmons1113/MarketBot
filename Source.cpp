@@ -1,4 +1,4 @@
-﻿
+
 #include "fileUtility.h"
 #include "network.h"
 #include <iostream>
@@ -9,24 +9,22 @@ int main()
 
 	std::cout << "Generating Neural Network" << std::endl << std::endl;
 
-	int inputSamples = 2000;
-
-	int bufferSize = 1;
+	int dataStreamSampleBufferLength = 2000;
 
 	//=========================================================================================================================
 	//Network Initialization
 
-	network myNetwork(3,inputSamples,150,1); 
-	myNetwork.randomizeNetwork();
-	myNetwork.setCircularInputs(true, bufferSize);
+	network myNetwork(4, dataStreamSampleBufferLength,500,1); // Create Network
 
-	int numLoops = 1;
+	myNetwork.randomizeNetwork(); // Randomize Network Weights and Biases
+
+	myNetwork.setCircularInputs(true, 1); // Let Network know that we are using a buffer
 
 	int miniBatchSize(10);
 
-	int numTests;
-
 	float learningRate(0.1);
+
+	uint32_t predictionDistance = 50;
 
 	float myBatchCost;
 
@@ -34,10 +32,9 @@ int main()
 
 	int sampleIndex;
 
-	uint32_t predictionDistance = 50;
 
 	//=========================================================================================================================
-	//Audio File Initialization
+	//Data File Initialization
 
 	fileUtility data;
 	data.loadFile("");
@@ -45,35 +42,40 @@ int main()
 	//=========================================================================================================================
 	//Start Training
 
-	numTests = (data.getReadFileSize() ) / (miniBatchSize * bufferSize);
+	int numBatches = (data.getReadFileSize() - dataStreamSampleBufferLength ) / (miniBatchSize);
 
 	std::cout << "Learning" << std::endl << std::endl;
 
-
-	for (int l = 0; l < numLoops; l++)
+	for (int s = 0; s < dataStreamSampleBufferLength; s++) // Fill DataStreamBuffer
 	{
-		for (int b = 0; b < numTests; b++)
-		{
-			myBatchCost = 0.0f;
-			for (int m = 0; m < miniBatchSize; m++)
-			{
-				sampleIndex = inputSamples + b * miniBatchSize * bufferSize + m * bufferSize;
-
-				for (int s = 0; s < bufferSize; s++)
-				{
-					myNetwork.setInputValueCircular(data.getU32B(sampleIndex + s));
-				}
-				myNetwork.inputCorrect(data.getU32B(sampleIndex + bufferSize + predictionDistance), 0);
-				myNetwork.think();
-				myNetwork.calculateCost();
-				myNetwork.learn(learningRate, miniBatchSize);
-				myBatchCost += myNetwork.getCost() / miniBatchSize;
-			}
-			myNetwork.applyLearned();
-			std::cout << "Batch : " << (l * numTests) +(b + 1) << " / " << numTests * numLoops  << " Cost : " << myBatchCost << std::endl;
-		}
+		myNetwork.setInputValueCircular(data.getFloat(s));
 	}
 
+	for (int b = 0; b < numBatches; b++)
+	{
+		myBatchCost = 0.0f;
+
+		for (int m = 0; m < miniBatchSize; m++)
+		{
+			sampleIndex = dataStreamSampleBufferLength + b * miniBatchSize + m;
+
+			myNetwork.setInputValueCircular(data.getFloat(sampleIndex));
+
+			myNetwork.inputCorrect(data.getU32B(sampleIndex + predictionDistance), 0);
+
+			myNetwork.think();
+
+			myNetwork.calculateCost();
+
+			myNetwork.learn(learningRate, miniBatchSize);
+
+			myBatchCost += myNetwork.getCost() / miniBatchSize;
+		}
+
+		myNetwork.applyLearned();
+
+		std::cout << "Batch : " << (b + 1) << " / " << " Cost : " << myBatchCost << std::endl;
+	}
 	
 	myNetwork.saveNetwork("LastNetwork", 0);
 

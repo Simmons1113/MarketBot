@@ -42,7 +42,7 @@ int main()
 	//=========================================================================================================================
 	//Start Training
 
-	int numBatches = (data.getReadFileSize() - dataStreamSampleBufferLength ) / (miniBatchSize);
+	int numBatches = (data.getReadFileSize() * 0.25f - dataStreamSampleBufferLength ) / (miniBatchSize);
 
 	std::cout << "Learning" << std::endl << std::endl;
 

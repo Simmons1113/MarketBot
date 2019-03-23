@@ -117,6 +117,17 @@ public:
 		return readMap.get(nIndex + 0) | (readMap.get(nIndex + 1) << 8) | (readMap.get(nIndex + 2) << 16) | (readMap.get(nIndex + 3) << 24);
 	}
 
+	float getFloat(int nIndex)
+	{
+		union 
+		{
+			float floatForm;
+			uint32_t intForm;
+		};
+		intForm = getU32B(nIndex);
+		return floatForm;
+	}
+
 private:
 
 	std::ifstream::pos_type filesize(const char* filename)
